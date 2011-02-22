@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.GL10;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ImmediateModeRenderer;
 
+//TREY IS PUTTING THIS HERE TO TEST THE COMMIT CHANGES FEATURE
+
 public class GdxTest implements ApplicationListener {
 	
 	Application app;
