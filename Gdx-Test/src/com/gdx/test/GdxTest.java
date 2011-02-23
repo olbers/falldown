@@ -3,11 +3,9 @@ package com.gdx.test;
 import com.badlogic.gdx.Application;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL10;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ImmediateModeRenderer;
-
-//TREY IS PUTTING THIS HERE TO TEST THE COMMIT CHANGES FEATURE
 
 public class GdxTest implements ApplicationListener {
 	
@@ -15,9 +13,10 @@ public class GdxTest implements ApplicationListener {
 	GL10 gl; // OpenGL object
 	ImmediateModeRenderer renderer; // renderer for drawing geometry on the fly (since I can't load textures..)
 	
-	float x, vx;
-	float y, vy;
+	float x, vx, ax;
+	float y, vy, ay;
 	float w = 100;
+	float wallw = 50;
 	
 	Wall[] walls;
 	Wall floor = null;
@@ -74,71 +73,110 @@ public class GdxTest implements ApplicationListener {
 		b = (float)Math.random();
 		a = (float)((Math.random() * .5) + .5);
 	}
-
-	@Override
-	public void dispose() {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void pause() {
-		// TODO Auto-generated method stub
-		
-	}
 	
 	private void resetGame()
 	{
 		initWalls(w);
-		
-		x = app.getGraphics().getWidth()/2;
-		vx = 0;
-		y = 0;
-		vy = 0;
-		
-		camY = -app.getGraphics().getHeight()/2;
+		resetBlock();
+		resetCam();
 		score = 0;
 	}
 	
-	private void renderGame()
+	private void resetBlock()
 	{
-		// friction
-		vx *= 0.95f;
+		x = app.getGraphics().getWidth()/2 - w/2;
+		vx = 0;
+		ax = 0;
 		
-		float accScale = 0.2f;
-		vx += app.getInput().getAccelerometerY()*accScale;
+		y = 0;
+		vy = 0;
+		ay = 0;
+	}
+	
+	private void resetCam()
+	{
+		camY = -app.getGraphics().getHeight()/2;
+		camSpeed = 90f;
+	}
+	
+	private void updateGame(float dt)
+	{
+		// NOTE: our block physics assume constant acceleration during the last dt seconds
+				
+		// update block position
+		x += vx*dt + 0.5f*ax*dt*dt;
+		y += vy*dt + 0.5f*ay*dt*dt;
 		
-		// gravity
-		vy += 1f;
+		// update block velocity
+		vx += ax*dt;
+		vy += ay*dt;
 		
-		// constrain position on floor
+		// update block acceleration
+		Input input = app.getInput();
+		if (input.isAccelerometerAvailable())
+		{
+			// NOTE: accelerometer units in m/s^2 ranging [-10,10]
+			ax = input.getAccelerometerY()*10f;
+		}
+		else
+		{
+			// control acceleration using the touched x-coord instead
+			if (input.isTouched())
+				ax = (input.getX() - width/2)*10f;
+			else
+				ax = 0;
+		}
+		
+		// apply gravity
+		ay = 1500f;
+		
+		// apply friction (deceleration opposite to velocity)
+		float decel = -1000 * Math.signum(vx);
+		if (Math.abs(decel*dt) < Math.abs(vx))
+			vx += decel*dt;
+		else
+			vx = 0;
+
+		// update camera position
+		camY += camSpeed*dt;
+		
+		// constrain block position on floor
 		if (floor != null)
 		{
 			boolean onFloor = y >= floor.y;
-			if(onFloor && x > (floor.holeX - 10) && x < (floor.holeX + 10))
+			boolean overHole = Math.abs(x-floor.holeX) < 10f;
+			
+			if (onFloor)
 			{
-				vx = 0;
-			}
-			else if (onFloor)
-			{
-				y = floor.y;
-				vy = 0;
+				if (overHole)
+				{
+					x = floor.holeX;
+					vx = 0;
+				}
+				else
+				{
+					y = floor.y;
+					vy = 0;
+				}
 			}
 		}
+			
+		// keep block above the bottom of the screen
+		float screenBottom = camY + height - 1;
+		if (y > screenBottom)
+		{
+			y = screenBottom;
+			vy = camSpeed; // travel with cam to prevent bouncing
+		}
 		
-		// update position
-		x += vx;
-		y += vy;
-		
-		// check if block hits the top of the screen
+		// game over if camera overtakes the block
 		if (y < camY)
 		{
-			camSpeed = 2f; //Reset the cam speed, the game is over
 			mode = Mode.DEAD;
 			return;
 		}
 		
-		// constrain box to screen
+		// apply left and right boundaries to block
 		if (x < 0)
 		{
 			x = 0;
@@ -151,7 +189,7 @@ public class GdxTest implements ApplicationListener {
 		}
 		
 		// update floor
-		if(y > floor.y + 50) //Make sure current floor has been passed before finding a new floor
+		if(y > floor.y + wallw) //Make sure current floor has been passed before finding a new floor
 		{
 			floor = null;
 			for(int i=0; i<walls.length; i++)
@@ -169,13 +207,15 @@ public class GdxTest implements ApplicationListener {
 				initWalls(y+300);
 				
 				//Increase camera speed
-				camSpeed += .1f;
+				camSpeed += 10f;
 			}
 		}
-		
+	}
+	
+	private void renderGame()
+	{
 		// translate to camera
 		gl.glTranslatef(0,-camY, 0);
-		camY += camSpeed;
 		
 		// draw player
 		drawRect(x, y-w, w, w, 1,1,1,1);
@@ -183,8 +223,8 @@ public class GdxTest implements ApplicationListener {
 		// draw walls
 		for(Wall wall : walls)
 		{
-			drawRect(0,wall.y,wall.holeX,50,r,g,b,a);
-			drawRect(wall.holeX+w,wall.y,width,50,r,g,b,a);
+			drawRect(0,wall.y,wall.holeX,wallw,r,g,b,a);
+			drawRect(wall.holeX+w,wall.y,width,wallw,r,g,b,a);
 		}
 	}
 	
@@ -224,13 +264,22 @@ public class GdxTest implements ApplicationListener {
 		gl.glLoadIdentity();
 		gl.glOrthof(0, width, height, 0, -1, 1);
 		
+		float dt = app.getGraphics().getDeltaTime();
+		
 		// render screen depending on the current mode
 		if (mode == Mode.TITLE)
+		{
 			renderTitle();
+		}
 		else if (mode == Mode.GAME)
+		{
+			updateGame(dt);
 			renderGame();
+		}
 		else if (mode == Mode.DEAD)
+		{
 			renderDeath();
+		}
 	}
 	
 	private void drawRect(float x, float y, float width, float height, float r, float g, float b, float a)
@@ -263,6 +312,17 @@ public class GdxTest implements ApplicationListener {
 		gl.glViewport(0, 0, width, height);
 	}
 
+	@Override
+	public void dispose() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void pause() {
+		// TODO Auto-generated method stub
+		
+	}
 	@Override
 	public void resume() {
 		// TODO Auto-generated method stub
