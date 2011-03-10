@@ -44,7 +44,7 @@ public class SceneGame extends Scene
 		if (input.isAccelerometerAvailable())
 		{
 			// NOTE: accelerometer units in m/s^2 ranging [-10,10]
-			ax = input.getAccelerometerY()*10f;
+			ax = input.getAccelerometerY()*500f;
 		}
 		else
 		{
