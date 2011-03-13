@@ -1,11 +1,22 @@
 package com.gdx.test;
 
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.Mesh;
+import com.badlogic.gdx.graphics.VertexAttribute;
+import com.badlogic.gdx.graphics.VertexAttributes.Usage;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+
+
 public class SceneGame extends Scene
 {
 	float x, vx, ax;
 	float y, vy, ay;
-	float w = 100;
-	float wallw = 50;
+	float blockSize = 100;
+	float wallWidth = 50;
+	
+	Mesh block;
 	
 	Wall[] walls;
 	Wall floor = null;
@@ -14,14 +25,12 @@ public class SceneGame extends Scene
 	float camSpeed = 2f;
 	int maxWalls = 30;
 	
-	float r;
-	float g;
-	float b;
-	float a;
-	
 	int score = 0;
 	
 	boolean initialized = false;
+	
+	static SpriteBatch batch;
+	static BitmapFont font;
 
 	@Override
 	public void update(float dt) {
@@ -50,7 +59,7 @@ public class SceneGame extends Scene
 		{
 			// control acceleration using the touched x-coord instead
 			if (input.isTouched())
-				ax = (input.getX() - width/2)*10f;
+				ax = (input.getX() - screenWidth/2)*10f;
 			else
 				ax = 0;
 		}
@@ -90,7 +99,7 @@ public class SceneGame extends Scene
 		}
 			
 		// keep block above the bottom of the screen
-		float screenBottom = camY + height - 1;
+		float screenBottom = camY + screenHeight - 1;
 		if (y > screenBottom)
 		{
 			y = screenBottom;
@@ -110,14 +119,14 @@ public class SceneGame extends Scene
 			x = 0;
 			vx = 0;
 		}
-		if (x > width-w)
+		if (x > screenWidth-blockSize)
 		{
-			x = width-w;
+			x = screenWidth-blockSize;
 			vx = 0;
 		}
 		
 		// update floor
-		if(y > floor.y + wallw) //Make sure current floor has been passed before finding a new floor
+		if(y > floor.y + wallWidth) //Make sure current floor has been passed before finding a new floor
 		{
 			floor = null;
 			for(int i=0; i<walls.length; i++)
@@ -131,8 +140,7 @@ public class SceneGame extends Scene
 			}
 			if(floor == null) //If we didn't find a new floor generate more floors
 			{
-				//TODO:  Fix this with LEGIT code :D
-				initWalls(y+300);
+				setWalls(y+300);
 				
 				//Increase camera speed
 				camSpeed += 10f;
@@ -147,62 +155,107 @@ public class SceneGame extends Scene
 		// translate to camera
 		gl.glTranslatef(0,-camY, 0);
 		
-		// draw player
-		drawRect(x, y-w, w, w, 1,1,1,1);
+		// draw block
+		gl.glTranslatef(x,y-blockSize,0);
+		block.render(GL10.GL_TRIANGLE_STRIP);
+		gl.glTranslatef(-x,-y+blockSize,0);
 		
 		// draw walls
 		for(Wall wall : walls)
-		{
-			drawRect(0,wall.y,wall.holeX,wallw,r,g,b,a);
-			drawRect(wall.holeX+w,wall.y,width,wallw,r,g,b,a);
-		}
+			wall.render();
+		
+		// draw score
+		batch.begin();
+		font.draw(batch, "score: "+y, 16,16);
+		batch.end();
 	}
 	
 	public void init() {
 		// NOTE: We can only initialize everything once we know the screen dimensions.
 		//       That is why this isn't called in the constructor.
 		
-		initWalls(w);
+		initWalls(blockSize);
 		initBlock();
 		initCam();
 		
 		initialized = true;
+		
+		if (batch == null)
+			batch = new SpriteBatch();
+		
+		if (font == null)
+			font = new BitmapFont();
 	}
 	
 	private void initWalls(float startY)
 	{
-		float y = startY+10;
-		float yspace = 2f*w;
 		walls = new Wall[maxWalls];
+		
 		for (int i=0; i<walls.length; i++)
 		{
-			walls[i] = new Wall(y,(float)Math.random()*(width-w));
+			float holeX = (float)Math.random()*(screenWidth-blockSize);
+			walls[i] = new Wall(holeX,wallWidth,blockSize,screenWidth);
+		}
+		
+		setWalls(startY);
+	}
+	
+	private void setWalls(float y)
+	{
+		//Set the colors
+		float r = (float)Math.random();
+		float g = (float)Math.random();
+		float b = (float)Math.random();
+		float a = (float)((Math.random() * .5) + .5);
+		float color = Color.toFloatBits(r, g, b, a);
+		
+		float yspace = 2f*blockSize;
+		
+		for (int i=0; i<walls.length; i++)
+		{
+			walls[i].set(y, color);
 			y += yspace;
 			yspace-=5;
 		}
-		floor = walls[0];
 		
-		//Set the colors
-		r = (float)Math.random();
-		g = (float)Math.random();
-		b = (float)Math.random();
-		a = (float)((Math.random() * .5) + .5);
+		floor = walls[0];
 	}
 	
 	private void initBlock()
 	{
-		x = width/2 - w/2;
+		x = screenWidth/2 - blockSize/2;
 		vx = 0;
 		ax = 0;
 		
 		y = 0;
 		vy = 0;
 		ay = 0;
+		
+		block = makeMesh();
+		
+		float c = Color.toFloatBits(1f, 1f, 1f, 1f);
+		block.setVertices(makeVerts(0,0,blockSize,blockSize,c));
+	}
+	
+	private float[] makeVerts(float left, float top, float right, float bottom, float color)
+	{
+		return new float[] {
+				left,top,0,color,
+				right,top,0,color,
+				left,bottom,0,color,
+				right,bottom,0,color
+		};
+	}
+	private Mesh makeMesh()
+	{
+		return new Mesh(true, 4, 0, 
+				new VertexAttribute(Usage.Position, 3, "a_pos"),
+				new VertexAttribute(Usage.ColorPacked, 4, "a_col"));
 	}
 	
 	private void initCam()
 	{
-		camY = -height/2;
+		camY = -screenHeight/2;
 		camSpeed = 90f;
 	}
 }
