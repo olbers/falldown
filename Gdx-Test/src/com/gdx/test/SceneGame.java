@@ -11,19 +11,26 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class SceneGame extends Scene
 {
+	final float tiltMultiplier = 500f;
+	final float clickMultiplier = 10f;
+	final float deceleration = 700f;
+	final float gravity = 1500f;
+	final float dropHeight = 300f;
+	final float camSpeedIncrement = 10f;
+	final float initialCamSpeed = 120f;
+	final int numWalls = 30;
+	final float wallWidth = 50;
+	final float blockSize = 100;
+		
 	float x, vx, ax;
 	float y, vy, ay;
-	float blockSize = 100;
-	float wallWidth = 50;
-	
 	Mesh block;
 	
 	Wall[] walls;
 	Wall floor = null;
 	
 	float camY;
-	float camSpeed = 2f;
-	int maxWalls = 30;
+	float camSpeed;
 	
 	int score = 0;
 	
@@ -53,22 +60,22 @@ public class SceneGame extends Scene
 		if (input.isAccelerometerAvailable())
 		{
 			// NOTE: accelerometer units in m/s^2 ranging [-10,10]
-			ax = input.getAccelerometerY()*500f;
+			ax = input.getAccelerometerY()*tiltMultiplier;
 		}
 		else
 		{
 			// control acceleration using the touched x-coord instead
 			if (input.isTouched())
-				ax = (input.getX() - screenWidth/2)*10f;
+				ax = (input.getX() - screenWidth/2)*clickMultiplier;
 			else
 				ax = 0;
 		}
 		
 		// apply gravity
-		ay = 1500f;
+		ay = gravity;
 		
 		// apply friction (deceleration opposite to velocity)
-		float decel = -1000 * Math.signum(vx);
+		float decel = -deceleration * Math.signum(vx);
 		if (Math.abs(decel*dt) < Math.abs(vx))
 			vx += decel*dt;
 		else
@@ -140,10 +147,10 @@ public class SceneGame extends Scene
 			}
 			if(floor == null) //If we didn't find a new floor generate more floors
 			{
-				setWalls(y+300);
+				setWalls(y+dropHeight);
 				
 				//Increase camera speed
-				camSpeed += 10f;
+				camSpeed += camSpeedIncrement;
 			}
 		}
 	}
@@ -166,7 +173,7 @@ public class SceneGame extends Scene
 		
 		// draw score
 		batch.begin();
-		font.draw(batch, "score: "+y, 16,16);
+		font.draw(batch, "score: "+(int)y, 6, screenHeight);
 		batch.end();
 	}
 	
@@ -189,7 +196,7 @@ public class SceneGame extends Scene
 	
 	private void initWalls(float startY)
 	{
-		walls = new Wall[maxWalls];
+		walls = new Wall[numWalls];
 		
 		for (int i=0; i<walls.length; i++)
 		{
@@ -256,6 +263,6 @@ public class SceneGame extends Scene
 	private void initCam()
 	{
 		camY = -screenHeight/2;
-		camSpeed = 90f;
+		camSpeed = initialCamSpeed;
 	}
 }

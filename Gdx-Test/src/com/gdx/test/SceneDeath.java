@@ -9,6 +9,7 @@ public class SceneDeath extends Scene
 		super();
 		clearColor = new Color(1f,0f,0f,1f);
 	}
+	
 	@Override
 	public void update(float dt) {
 		super.update(dt);
