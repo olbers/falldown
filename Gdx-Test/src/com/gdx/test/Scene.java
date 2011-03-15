@@ -39,6 +39,10 @@ public abstract class Scene
 		gl.glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 		gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
 		
+		// enable blending
+		gl.glEnable(GL10.GL_BLEND); 
+		gl.glBlendFunc (GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		
 		// set projection
 		gl.glMatrixMode(GL10.GL_PROJECTION);
 		gl.glLoadIdentity();

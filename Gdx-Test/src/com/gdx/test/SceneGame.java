@@ -3,8 +3,6 @@ package com.gdx.test;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL10;
 import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.VertexAttribute;
-import com.badlogic.gdx.graphics.VertexAttributes.Usage;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
@@ -21,7 +19,9 @@ public class SceneGame extends Scene
 	final int numWalls = 30;
 	final float wallWidth = 50;
 	final float blockSize = 100;
-		
+	final float initialYSpace = 2f*blockSize;		
+	final float ySpaceDecrement = 5f;
+	
 	float x, vx, ax;
 	float y, vy, ay;
 	Mesh block;
@@ -209,20 +209,16 @@ public class SceneGame extends Scene
 	
 	private void setWalls(float y)
 	{
-		//Set the colors
-		float r = (float)Math.random();
-		float g = (float)Math.random();
-		float b = (float)Math.random();
 		float a = (float)((Math.random() * .5) + .5);
-		float color = Color.toFloatBits(r, g, b, a);
+		float color = Util.getRandomColor(a);
 		
-		float yspace = 2f*blockSize;
+		float yspace = initialYSpace;
 		
 		for (int i=0; i<walls.length; i++)
 		{
 			walls[i].set(y, color);
 			y += yspace;
-			yspace-=5;
+			yspace-=ySpaceDecrement;
 		}
 		
 		floor = walls[0];
@@ -238,27 +234,12 @@ public class SceneGame extends Scene
 		vy = 0;
 		ay = 0;
 		
-		block = makeMesh();
+		block = Util.makeMesh();
 		
 		float c = Color.toFloatBits(1f, 1f, 1f, 1f);
-		block.setVertices(makeVerts(0,0,blockSize,blockSize,c));
+		block.setVertices(Util.makeVerts(0,0,blockSize,blockSize,0,c));
 	}
 	
-	private float[] makeVerts(float left, float top, float right, float bottom, float color)
-	{
-		return new float[] {
-				left,top,0,color,
-				right,top,0,color,
-				left,bottom,0,color,
-				right,bottom,0,color
-		};
-	}
-	private Mesh makeMesh()
-	{
-		return new Mesh(true, 4, 0, 
-				new VertexAttribute(Usage.Position, 3, "a_pos"),
-				new VertexAttribute(Usage.ColorPacked, 4, "a_col"));
-	}
 	
 	private void initCam()
 	{
